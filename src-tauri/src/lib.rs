@@ -190,18 +190,18 @@ async fn create_backup_inner(server_id:&str,state:&State<'_,AppState>,label:&str
  let id=Uuid::new_v4().to_string();let destination=state.backup_root.join(server_id).join(&id);let parent=destination.parent().ok_or("Invalid backup destination")?;fs::create_dir_all(parent).map_err(|e|e.to_string())?;
  let size=match copy_backup_tree(&root,&destination){Ok(n)=>n,Err(e)=>{let _=fs::remove_dir_all(&destination);return Err(e)}};
  let created=Utc::now().to_rfc3339();let record=BackupRecord{id:id.clone(),server_id:server_id.to_owned(),label:label.to_owned(),created_at:created.clone(),size_bytes:size};
- let conn=db_conn(state)?;if let Err(e)=conn.execute("INSERT INTO backups(id,server_id,label,created_at,size_bytes,path) VALUES(?1,?2,?3,?4,?5,?6)",params![id,server_id,label,created,size,destination.to_string_lossy()]){let _=fs::remove_dir_all(destination);return Err(e.to_string());}let _=name;Ok(record)
+ let conn=db_conn(state)?;if let Err(e)=conn.execute("INSERT INTO backups(id,server_id,label,created_at,size_bytes,path) VALUES(?1,?2,?3,?4,?5,?6)",params![id,server_id,label,created,size.min(i64::MAX as u64) as i64,destination.to_string_lossy()]){let _=fs::remove_dir_all(destination);return Err(e.to_string());}let _=name;Ok(record)
 }
 #[tauri::command]
 async fn create_server_backup(server_id:String,state:State<'_,AppState>)->Result<BackupRecord,String>{create_backup_inner(&server_id,&state,"Manual backup").await}
 #[tauri::command]
-fn list_server_backups(server_id:String,state:State<'_,AppState>)->Result<Vec<BackupRecord>,String>{let conn=db_conn(&state)?;let mut stmt=conn.prepare("SELECT id,server_id,label,created_at,size_bytes FROM backups WHERE server_id=?1 ORDER BY created_at DESC").map_err(|e|e.to_string())?;let rows=stmt.query_map([server_id],|r|Ok(BackupRecord{id:r.get(0)?,server_id:r.get(1)?,label:r.get(2)?,created_at:r.get(3)?,size_bytes:r.get(4)?})).map_err(|e|e.to_string())?;rows.collect::<Result<Vec<_>,_>>().map_err(|e|e.to_string())}
+fn list_server_backups(server_id:String,state:State<'_,AppState>)->Result<Vec<BackupRecord>,String>{let conn=db_conn(&state)?;let mut stmt=conn.prepare("SELECT id,server_id,label,created_at,size_bytes FROM backups WHERE server_id=?1 ORDER BY created_at DESC").map_err(|e|e.to_string())?;let rows=stmt.query_map([server_id],|r|Ok(BackupRecord{id:r.get(0)?,server_id:r.get(1)?,label:r.get(2)?,created_at:r.get(3)?,size_bytes:r.get::<_,i64>(4)?.max(0) as u64})).map_err(|e|e.to_string())?;rows.collect::<Result<Vec<_>,_>>().map_err(|e|e.to_string())}
 #[tauri::command]
 async fn restore_server_backup(server_id:String,backup_id:String,state:State<'_,AppState>)->Result<(),String>{
  {let processes=state.processes.lock().await;if processes.contains_key(&server_id){return Err("Stop the server before restoring a backup".into());}}
- let _safety= create_backup_inner(&server_id,&state,"Automatic pre-restore safety backup").await?;
  let (directory,stored_path)={let conn=db_conn(&state)?;let directory:String=conn.query_row("SELECT directory FROM servers WHERE id=?1",[&server_id],|r|r.get(0)).map_err(|e|e.to_string())?;let path:String=conn.query_row("SELECT path FROM backups WHERE id=?1 AND server_id=?2",params![backup_id,server_id],|r|r.get(0)).map_err(|e|format!("Backup not found: {e}"))?;(directory,path)};
  let backup_root=state.backup_root.canonicalize().map_err(|e|e.to_string())?;let backup=PathBuf::from(stored_path).canonicalize().map_err(|e|e.to_string())?;if !backup.starts_with(&backup_root)||!backup.is_dir(){return Err("Backup path failed the safety check".into());}
+ let _safety=create_backup_inner(&server_id,&state,"Automatic pre-restore safety backup").await?;
  let root=PathBuf::from(directory).canonicalize().map_err(|e|e.to_string())?;let parent=root.parent().ok_or("Cannot restore a server folder without a parent directory")?;let token=Uuid::new_v4().to_string();let staging=parent.join(format!(".craftpilot-restore-{token}"));let previous=parent.join(format!(".craftpilot-previous-{token}"));
  if let Err(e)=copy_backup_tree(&backup,&staging){let _=fs::remove_dir_all(&staging);return Err(format!("Could not prepare restore: {e}"));}
  if let Err(e)=fs::rename(&root,&previous){let _=fs::remove_dir_all(&staging);return Err(format!("Could not move the current server folder: {e}"));}
