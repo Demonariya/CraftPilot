@@ -4,6 +4,15 @@ A Windows-first Minecraft server manager built with Rust, Tauri 2, React and Typ
 
 ## Current milestone
 
+**0.7.0 — Backups & Restore**
+
+- Create full local snapshots of a managed server folder, including worlds, configuration and add-ons
+- Store snapshots outside the server directory with SQLite metadata
+- Restore a snapshot only while the server is stopped
+- Automatically create a safety snapshot before every restore
+- Stage restored files and roll back if the directory swap fails
+- Delete individual snapshots with server-root and backup-root path validation
+
 **0.6.0 — Plugin & Mod Manager**
 
 - Detect Paper, Purpur, Spigot, Fabric, Forge, NeoForge and Quilt from server JAR/folder names
@@ -69,7 +78,7 @@ npm run tauri dev
 npm run tauri build
 ```
 
-CraftPilot currently manages local Java server processes. Spigot BuildTools automation, backups, Java runtime management and scheduling remain planned. Modrinth is the supported add-on source in this release. The Players screen currently provides live roster tracking and console-backed moderation; UUID enrichment is not yet available. The installer currently supports Paper, Purpur and Vanilla.
+CraftPilot currently manages local Java server processes. Backups are local uncompressed folder snapshots; scheduled backups, Java runtime management and Spigot BuildTools automation remain planned. Modrinth is the supported add-on source in this release. The Players screen currently provides live roster tracking and console-backed moderation; UUID enrichment is not yet available. The installer currently supports Paper, Purpur and Vanilla.
 
 ## License
 
