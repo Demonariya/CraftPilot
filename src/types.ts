@@ -7,3 +7,5 @@ export interface ServerMetrics { running:boolean; cpu_usage_percent:number; memo
 
 export interface RemoteHost { id:string; name:string; host:string; port:number; username:string; identity_file:string; created_at:string; }
 export interface RemoteCommandResult { stdout:string; stderr:string; exit_code:number; }
+
+export interface RemoteServer { id:string; remote_host_id:string; name:string; working_directory:string; jar_path:string; java_path:string; min_memory_mb:number; max_memory_mb:number; session_name:string; created_at:string; }

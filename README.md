@@ -1,10 +1,20 @@
+## 1.8.0 — Remote Minecraft Process Management
+
+- Configure multiple Minecraft server profiles for each saved SSH host, including remote working directory, JAR path, Java executable, heap allocation and tmux session name.
+- Start, stop and restart remote Java server processes through key-authenticated OpenSSH.
+- Keep remote servers running after CraftPilot or the SSH connection closes by using detached `tmux` sessions.
+- Inspect remote process state, refresh the last 300 console lines and send single-line Minecraft console commands.
+- Remote paths are POSIX paths and the server JAR must already exist on the remote machine.
+- Requires `ssh.exe` on Windows and `tmux` plus a compatible Java runtime on the remote Linux/Unix host.
+- Removing an SSH profile also removes its saved CraftPilot remote server profiles; it does not delete remote files.
+
 # CraftPilot
 
 A Windows-first Minecraft server manager built with Rust, Tauri 2, React and TypeScript.
 
 ## Current milestone
 
-**1.5.0 — Mod & Plugin Manager Hardening**
+**1.8.0 — Remote Minecraft Process Management**
 - Keep the existing Modrinth-powered plugin/mod discovery, compatibility filtering, inventory, install and removal workflow.
 - Verify Modrinth releases against the publisher-provided SHA-512 hash before installation.
 - Canonicalize the target add-on folder and reject folder symlinks that resolve outside the server root.
