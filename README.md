@@ -4,6 +4,15 @@ A Windows-first Minecraft server manager built with Rust, Tauri 2, React and Typ
 
 ## Current milestone
 
+**0.9.0 — Java Runtime Manager**
+
+- Detect installed Java runtimes from `JAVA_HOME`, `PATH` and common Windows installation directories
+- Display runtime vendor, version, major version and executable path
+- Assign a separate detected Java executable to each server profile
+- Validate Java executables before saving and prevent changing a runtime while its server is running
+- Keep existing per-server Java configuration when upgrading
+- Java downloads and automatic version recommendations are not included in this milestone
+
 **0.8.0 — Backup Scheduler & Automation**
 
 - Configure recurring backups from every 15 minutes up to every 7 days
