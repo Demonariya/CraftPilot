@@ -146,3 +146,10 @@ CraftPilot currently manages local Java server processes. Backups are local unco
 ## License
 
 MIT
+
+
+## 1.6.0 — Server Monitoring & Analytics
+- Per-server Java process CPU and memory telemetry, refreshed every five seconds.
+- Online player count and process uptime in a dedicated Monitoring page.
+- Rolling 60-sample CPU and memory history chart.
+- Explicitly distinguishes process resource usage from host-wide metrics; TPS and ping are not fabricated when unavailable.
