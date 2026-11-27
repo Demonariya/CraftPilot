@@ -13,12 +13,12 @@ struct AppState { db: Mutex<Connection>, processes: tokio::sync::Mutex<HashMap<S
 struct RunningServer { child: Child, stdin: ChildStdin }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct ServerProfile { id:String, name:String, directory:String, jar_file:String, java_path:String, min_memory_mb:u32, max_memory_mb:u32, created_at:String, status:String }
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 struct ServerOutput { server_id:String, stream:String, line:String, timestamp:String }
 #[derive(Serialize)]
 struct HostMetrics { cpu_usage:f32, used_memory_mb:u64, total_memory_mb:u64 }
 fn emit_line(app:&AppHandle, server_id:&str, stream:&str, line:String) { let payload=ServerOutput{server_id:server_id.into(),stream:stream.into(),line,timestamp:Utc::now().to_rfc3339()};let _=app.emit("server://output",payload); }
-fn db_conn(state:&State<'_,AppState>)->Result<std::sync::MutexGuard<'_,Connection>,String>{state.db.lock().map_err(|e|format!("Database lock failed: {e}"))}
+fn db_conn<'a>(state:&'a State<'a,AppState>)->Result<std::sync::MutexGuard<'a,Connection>,String>{state.db.lock().map_err(|e|format!("Database lock failed: {e}"))}
 
 #[derive(Serialize, Clone)]
 struct ServerPlayer { name:String, uuid:Option<String>, joined_at:String }
@@ -38,7 +38,7 @@ fn record_player_line(app:&AppHandle,server_id:&str,line:&str) {
  let Some(message)=line.split_once(": ").map(|(_,m)|m.trim()) else{return};
  let (name,joined)=if let Some(n)=message.strip_suffix(" joined the game"){(n.trim(),true)}else if let Some(n)=message.strip_suffix(" left the game"){(n.trim(),false)}else{return};
  if name.is_empty()||name.len()>16||!name.chars().all(|c|c.is_ascii_alphanumeric()||c=='_'){return;}
- if let Ok(conn)=state.db.lock(){let now=Utc::now().to_rfc3339();if joined{let _=conn.execute("INSERT OR REPLACE INTO online_players(server_id,player_name,joined_at) VALUES(?1,?2,?3)",[server_id,name,&now]);let _=conn.execute("INSERT INTO player_sessions(server_id,player_name,joined_at) VALUES(?1,?2,?3)",[server_id,name,&now]);}else{let _=conn.execute("DELETE FROM online_players WHERE server_id=?1 AND player_name=?2",params![server_id,name]);let _=conn.execute("UPDATE player_sessions SET left_at=?1 WHERE id=(SELECT id FROM player_sessions WHERE server_id=?2 AND player_name=?3 AND left_at IS NULL ORDER BY id DESC LIMIT 1)",params![now,server_id,name]);}}
+ if let Ok(conn)=state.db.lock(){let now=Utc::now().to_rfc3339();if joined{let _=conn.execute("INSERT OR REPLACE INTO online_players(server_id,player_name,joined_at) VALUES(?1,?2,?3)",[server_id,name,&now]);let _=conn.execute("INSERT INTO player_sessions(server_id,player_name,joined_at) VALUES(?1,?2,?3)",[server_id,name,&now]);}else{let _=conn.execute("DELETE FROM online_players WHERE server_id=?1 AND player_name=?2",params![server_id,name]);let _=conn.execute("UPDATE player_sessions SET left_at=?1 WHERE id=(SELECT id FROM player_sessions WHERE server_id=?2 AND player_name=?3 AND left_at IS NULL ORDER BY id DESC LIMIT 1)",params![now,server_id,name]);}};
 }
 fn valid_player_name(name:&str)->bool{!name.is_empty()&&name.len()<=16&&name.chars().all(|c|c.is_ascii_alphanumeric()||c=='_')}
 #[tauri::command]
