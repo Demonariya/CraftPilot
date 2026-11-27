@@ -4,6 +4,14 @@ A Windows-first Minecraft server manager built with Rust, Tauri 2, React and Typ
 
 ## Current milestone
 
+**1.1.0 — Java Runtime Lifecycle Management**
+
+- Distinguish CraftPilot-managed Java runtimes from system installations
+- Display disk usage for managed runtimes
+- Safely remove only CraftPilot-managed runtimes
+- Prevent removal while any registered server profile is assigned to the runtime
+- Apply the recommended Java major version directly to the selected server
+
 **1.0.0 — Java Download & Compatibility Engine**
 
 - Download official Eclipse Temurin JRE builds for Java 8, 17, 21 and 25 (Windows x64)
@@ -106,7 +114,7 @@ npm run tauri dev
 npm run tauri build
 ```
 
-CraftPilot currently manages local Java server processes. Backups are local uncompressed folder snapshots; Windows-service scheduling (backups currently run while CraftPilot is open), Java runtime management and Spigot BuildTools automation remain planned. Modrinth is the supported add-on source in this release. The Players screen currently provides live roster tracking and console-backed moderation; UUID enrichment is not yet available. The installer currently supports Paper, Purpur and Vanilla.
+CraftPilot currently manages local Java server processes. Backups are local uncompressed folder snapshots; Windows-service scheduling (backups currently run while CraftPilot is open), Windows-service scheduling and Spigot BuildTools automation remain planned. Java runtime lifecycle controls are available for CraftPilot-managed installations only. Modrinth is the supported add-on source in this release. The Players screen currently provides live roster tracking and console-backed moderation; UUID enrichment is not yet available. The installer currently supports Paper, Purpur and Vanilla.
 
 ## License
 
