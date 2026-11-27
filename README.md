@@ -4,6 +4,18 @@ A Windows-first Minecraft server manager built with Rust, Tauri 2, React and Typ
 
 ## Current milestone
 
+**1.3.0 — Startup Profiles & Process Lifecycle**
+- Per-server custom JVM arguments with quoted-value parsing and validation.
+- Balanced, Performance, and Low Memory launch presets.
+- Configurable graceful shutdown timeout (5–120 seconds), followed by forced termination only when necessary.
+- Existing databases are migrated automatically without losing server profiles.
+
+**1.3.0 — Startup Profiles & Process Lifecycle**
+- Per-server custom JVM arguments with quoted-value parsing and validation.
+- Balanced, Performance, and Low Memory launch presets.
+- Configurable graceful shutdown timeout (5–120 seconds), followed by forced termination only when necessary.
+- Existing databases are migrated automatically without losing server profiles.
+
 **1.2.0 — Server Profile Management**
 
 - Dedicated registered-server management screen
