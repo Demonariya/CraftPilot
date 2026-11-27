@@ -4,6 +4,15 @@ A Windows-first Minecraft server manager built with Rust, Tauri 2, React and Typ
 
 ## Current milestone
 
+**1.0.0 — Java Download & Compatibility Engine**
+
+- Download official Eclipse Temurin JRE builds for Java 8, 17, 21 and 25 (Windows x64)
+- Verify downloaded archives with the publisher-provided SHA-256 checksum
+- Safely extract ZIP archives into CraftPilot-managed application data
+- Report download and verification progress to the Java Runtime screen
+- Discover CraftPilot-managed runtimes alongside system installations
+- Recommend Java major versions from Minecraft version input
+
 **0.9.0 — Java Runtime Manager**
 
 - Detect installed Java runtimes from `JAVA_HOME`, `PATH` and common Windows installation directories
@@ -11,7 +20,7 @@ A Windows-first Minecraft server manager built with Rust, Tauri 2, React and Typ
 - Assign a separate detected Java executable to each server profile
 - Validate Java executables before saving and prevent changing a runtime while its server is running
 - Keep existing per-server Java configuration when upgrading
-- Java downloads and automatic version recommendations are not included in this milestone
+- Java downloads and automatic version recommendations are included in 1.0.0
 
 **0.8.0 — Backup Scheduler & Automation**
 

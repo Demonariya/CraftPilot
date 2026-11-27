@@ -1,13 +1,14 @@
 use chrono::Utc;
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fs, path::PathBuf, sync::{Arc, Mutex, atomic::{AtomicBool, Ordering}}, time::Duration};
+use std::{collections::HashMap, fs, path::{Path, PathBuf}, sync::{Arc, Mutex, atomic::{AtomicBool, Ordering}}, time::Duration};
 use sysinfo::System;
 use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::{io::{AsyncBufReadExt, AsyncWriteExt, BufReader}, process::{Child, ChildStdin, Command}, time::sleep};
 use uuid::Uuid;
 use futures_util::StreamExt;
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 
 struct AppState { db: Mutex<Connection>, processes: tokio::sync::Mutex<HashMap<String, RunningServer>>, backup_root: PathBuf }
 struct RunningServer { child: Child, stdin: ChildStdin }
@@ -123,7 +124,7 @@ fn inspect_java(path:&PathBuf)->Option<JavaRuntime>{
  Some(JavaRuntime{path:path.to_string_lossy().to_string(),version,major,vendor})
 }
 #[tauri::command]
-fn list_java_runtimes()->Vec<JavaRuntime>{
+fn list_java_runtimes(app:AppHandle)->Vec<JavaRuntime>{
  let mut candidates=Vec::<PathBuf>::new();
  let exe=if cfg!(windows){"java.exe"}else{"java"};
  if let Some(home)=std::env::var_os("JAVA_HOME"){candidates.push(PathBuf::from(home).join("bin").join(exe));}
@@ -131,6 +132,7 @@ fn list_java_runtimes()->Vec<JavaRuntime>{
  #[cfg(windows)] {
   for key in ["ProgramFiles","ProgramFiles(x86)"] { if let Some(root)=std::env::var_os(key){let root=PathBuf::from(root);for vendor in ["Java","Eclipse Adoptium","Microsoft","Zulu","Amazon Corretto","BellSoft"] {let dir=root.join(vendor);if let Ok(entries)=fs::read_dir(dir){for entry in entries.flatten(){candidates.push(entry.path().join("bin").join(exe));}}}} }
  }
+ if let Ok(data)=app.path().app_data_dir(){let managed=data.join("java");if let Ok(entries)=fs::read_dir(managed){for entry in entries.flatten(){candidates.push(entry.path().join("bin").join(exe));}}}
  let mut seen=std::collections::HashSet::new();let mut runtimes=Vec::new();
  for path in candidates {let key=fs::canonicalize(&path).unwrap_or_else(|_|path.clone()).to_string_lossy().to_lowercase();if !seen.insert(key){continue;}if let Some(runtime)=inspect_java(&path){runtimes.push(runtime);}}
  runtimes.sort_by(|a,b|b.major.cmp(&a.major).then_with(||a.vendor.cmp(&b.vendor)));runtimes
@@ -142,6 +144,45 @@ async fn set_server_java(server_id:String,java_path:String,state:State<'_,AppSta
  let conn=db_conn(&state)?;let changed=conn.execute("UPDATE servers SET java_path=?1 WHERE id=?2",params![runtime.path,server_id]).map_err(|e|e.to_string())?;if changed==0{return Err("Server profile not found.".into());}Ok(())
 }
 #[tauri::command]
+#[tauri::command]
+async fn install_java_runtime(major:u32,app:AppHandle)->Result<JavaRuntime,String>{
+ if ![8,17,21,25].contains(&major){return Err("Supported Java versions are 8, 17, 21 and 25.".into());}
+ let data=app.path().app_data_dir().map_err(|e|e.to_string())?;let root=data.join("java");fs::create_dir_all(&root).map_err(|e|e.to_string())?;
+ let target=root.join(format!("temurin-{major}"));let exe=if cfg!(windows){"java.exe"}else{"java"};let existing=target.join("bin").join(exe);if let Some(runtime)=inspect_java(&existing){return Ok(runtime);}
+ let id=Uuid::new_v4().to_string();let api=format!("https://api.adoptium.net/v3/assets/latest/{major}/hotspot?architecture=x64&heap_size=normal&image_type=jre&jvm_impl=hotspot&os=windows&page_size=1&vendor=eclipse");
+ emit_install(&app,&id,0,0,"metadata",&format!("Resolving Eclipse Temurin Java {major} package…"));
+ let metadata=fetch_json(&api).await?;let asset=metadata.as_array().and_then(|a|a.first()).ok_or("Eclipse Adoptium has no matching Windows x64 JRE release for this Java version.")?;
+ let package=asset.get("binary").and_then(|b|b.get("package")).ok_or("Java package metadata is incomplete.")?;
+ let url=package.get("link").and_then(Value::as_str).ok_or("Java download URL is missing.")?;
+ let expected=package.get("checksum").and_then(Value::as_str).ok_or("Java package checksum is missing.")?.to_lowercase();
+ let client=reqwest::Client::new();let response=client.get(url).header("User-Agent","CraftPilot/1.0.0").send().await.map_err(|e|format!("Java download failed: {e}"))?;
+ if !response.status().is_success(){return Err(format!("Java download server returned HTTP {}",response.status()));}
+ let total=response.content_length().unwrap_or(0);let temp=root.join(format!(".java-{id}.zip"));let mut file=tokio::fs::File::create(&temp).await.map_err(|e|e.to_string())?;let mut stream=response.bytes_stream();let mut downloaded=0u64;
+ while let Some(chunk)=stream.next().await{let chunk=chunk.map_err(|e|format!("Java download stream failed: {e}"))?;file.write_all(&chunk).await.map_err(|e|e.to_string())?;downloaded+=chunk.len() as u64;emit_install(&app,&id,downloaded,total,"download",&format!("Downloading Java {major} · {:.1} MB",downloaded as f64/1048576.0));}
+ file.flush().await.map_err(|e|e.to_string())?;drop(file);
+ let bytes=fs::read(&temp).map_err(|e|e.to_string())?;let actual=format!("{:x}",Sha256::digest(&bytes));if actual!=expected{let _=fs::remove_file(&temp);return Err("Java archive SHA-256 verification failed. The archive was discarded.".into());}
+ emit_install(&app,&id,downloaded,total,"verify","Checksum verified. Extracting Java runtime…");
+ let stage=root.join(format!(".extract-{id}"));fs::create_dir_all(&stage).map_err(|e|e.to_string())?;let archive_path=temp.clone();let stage_path=stage.clone();
+ let extracted=tokio::task::spawn_blocking(move||->Result<(),String>{
+  let file=std::fs::File::open(&archive_path).map_err(|e|e.to_string())?;let mut archive=zip::ZipArchive::new(file).map_err(|e|format!("Invalid Java ZIP archive: {e}"))?;
+  for index in 0..archive.len(){let mut entry=archive.by_index(index).map_err(|e|e.to_string())?;let relative=entry.enclosed_name().ok_or("Java archive contains an unsafe path.")?.to_path_buf();let out=stage_path.join(relative);if !out.starts_with(&stage_path){return Err("Java archive attempted to escape its extraction directory.".into());}
+   if entry.is_dir(){std::fs::create_dir_all(&out).map_err(|e|e.to_string())?;}else{if entry.unix_mode().map(|m|m&0o170000==0o120000).unwrap_or(false){return Err("Java archive contains an unexpected symbolic link.".into());}if let Some(parent)=out.parent(){std::fs::create_dir_all(parent).map_err(|e|e.to_string())?;}let mut output=std::fs::File::create(&out).map_err(|e|e.to_string())?;std::io::copy(&mut entry,&mut output).map_err(|e|e.to_string())?;}
+  }Ok(())
+ }).await.map_err(|e|format!("Java extraction task failed: {e}"))?;
+ let _=fs::remove_file(&temp);if let Err(error)=extracted{let _=fs::remove_dir_all(&stage);return Err(error);}
+ let mut runtime_exe=None;for entry in fs::read_dir(&stage).map_err(|e|e.to_string())?.flatten(){let candidate=entry.path().join("bin").join(exe);if candidate.is_file(){runtime_exe=Some(candidate);break;}}
+ let source=runtime_exe.ok_or("The downloaded archive does not contain a valid Java executable.")?;let source_root=source.parent().and_then(Path::parent).ok_or("Cannot resolve extracted Java home directory.")?.to_path_buf();
+ if target.exists(){fs::remove_dir_all(&target).map_err(|e|format!("Cannot replace previous managed Java runtime: {e}"))?;}
+ fs::rename(&source_root,&target).map_err(|e|format!("Cannot finalize Java installation: {e}"))?;let _=fs::remove_dir_all(&stage);
+ let runtime=inspect_java(&target.join("bin").join(exe)).ok_or("Java was extracted but failed its version check.")?;
+ emit_install(&app,&id,downloaded,total,"complete",&format!("Java {major} installed successfully."));Ok(runtime)
+}
+#[tauri::command]
+fn get_java_recommendation(minecraft_version:String)->Result<(u32,String),String>{
+ let version=minecraft_version.trim().trim_start_matches('v');let mut parts=version.split('.');let major=parts.next().and_then(|v|v.parse::<u32>().ok()).ok_or("Enter a valid Minecraft version, such as 1.21.8 or 26.1.")?;let minor=parts.next().and_then(|v|v.parse::<u32>().ok()).unwrap_or(0);
+ let java=if major>=26{25}else if major>1||(major==1&&minor>=20&&version.split('.').nth(2).and_then(|v|v.parse::<u32>().ok()).unwrap_or(0)>=5){21}else if major==1&&minor>=17{17}else{8};
+ let reason=match java{25=>"Minecraft 26.1 and newer require Java 25.",21=>"Minecraft 1.20.5 through 1.21.x use Java 21.",17=>"Minecraft 1.17 through 1.20.4 use Java 17.",_=>"Legacy Minecraft versions before 1.17 generally use Java 8."}.to_string();Ok((java,reason))
+}
 fn get_host_metrics()->HostMetrics{let mut system=System::new_all();system.refresh_all();HostMetrics{cpu_usage:system.global_cpu_usage(),used_memory_mb:system.used_memory()/1024/1024,total_memory_mb:system.total_memory()/1024/1024}}
 
 
@@ -258,4 +299,4 @@ fn delete_backup_schedule(server_id:String,state:State<'_,AppState>)->Result<(),
 fn prune_server_backups(state:&State<'_,AppState>,server_id:&str,keep:u32)->Result<(),String>{let rows={let conn=db_conn(state)?;let mut stmt=conn.prepare("SELECT id,path FROM backups WHERE server_id=?1 ORDER BY created_at DESC,id DESC LIMIT -1 OFFSET ?2").map_err(|e|e.to_string())?;let rows=stmt.query_map(params![server_id,keep as i64],|r|Ok((r.get::<_,String>(0)?,r.get::<_,String>(1)?))).map_err(|e|e.to_string())?;rows.collect::<Result<Vec<_>,_>>().map_err(|e|e.to_string())?};let root=state.backup_root.canonicalize().map_err(|e|e.to_string())?;for(id,stored)in rows{let path=PathBuf::from(stored).canonicalize().map_err(|e|e.to_string())?;if !path.starts_with(&root)||!path.is_dir(){return Err("A backup selected for retention cleanup failed path validation".into());}fs::remove_dir_all(path).map_err(|e|format!("Retention cleanup failed: {e}"))?;let conn=db_conn(state)?;conn.execute("DELETE FROM backups WHERE id=?1 AND server_id=?2",params![id,server_id]).map_err(|e|e.to_string())?;}Ok(())}
 fn start_backup_scheduler(app:AppHandle){tauri::async_runtime::spawn(async move{let mut ticker=tokio::time::interval(Duration::from_secs(30));loop{ticker.tick().await;let state=app.state::<AppState>();let now=Utc::now().to_rfc3339();let due={let Ok(conn)=state.db.lock()else{continue};let Ok(mut stmt)=conn.prepare("SELECT id,server_id,interval_minutes,retention_count FROM backup_schedules WHERE enabled=1 AND next_run_at IS NOT NULL AND next_run_at<=?1")else{continue};let Ok(rows)=stmt.query_map([&now],|r|Ok((r.get::<_,String>(0)?,r.get::<_,String>(1)?,r.get::<_,i64>(2)?,r.get::<_,i64>(3)?)))else{continue};rows.filter_map(Result::ok).collect::<Vec<_>>()};for(id,server_id,interval,retention)in due{let result=create_backup_inner(&server_id,&state,"Scheduled backup").await.and_then(|_|prune_server_backups(&state,&server_id,retention.max(1) as u32));let next=match &result{Ok(())=>Utc::now()+chrono::Duration::minutes(interval.max(15)),Err(_)=>Utc::now()+chrono::Duration::minutes(5)};let last=if result.is_ok(){Some(Utc::now().to_rfc3339())}else{None};let err=result.err();if let Ok(conn)=state.db.lock(){let _=conn.execute("UPDATE backup_schedules SET next_run_at=?1,last_run_at=COALESCE(?2,last_run_at),last_error=?3 WHERE id=?4",params![next.to_rfc3339(),last,err,id]);}}}});}
 
-pub fn run(){tauri::Builder::default().plugin(tauri_plugin_dialog::init()).setup(|app|{let app_data=app.path().app_data_dir()?;fs::create_dir_all(&app_data)?;let backup_root=app_data.join("backups");fs::create_dir_all(&backup_root)?;let conn=Connection::open(app_data.join("craftpilot.db"))?;conn.execute_batch("PRAGMA journal_mode=WAL;CREATE TABLE IF NOT EXISTS servers(id TEXT PRIMARY KEY,name TEXT NOT NULL,directory TEXT NOT NULL,jar_file TEXT NOT NULL,java_path TEXT NOT NULL,min_memory_mb INTEGER NOT NULL,max_memory_mb INTEGER NOT NULL,created_at TEXT NOT NULL);CREATE TABLE IF NOT EXISTS online_players(server_id TEXT NOT NULL,player_name TEXT NOT NULL,joined_at TEXT NOT NULL,PRIMARY KEY(server_id,player_name));CREATE TABLE IF NOT EXISTS player_sessions(id INTEGER PRIMARY KEY AUTOINCREMENT,server_id TEXT NOT NULL,player_name TEXT NOT NULL,joined_at TEXT NOT NULL,left_at TEXT);CREATE INDEX IF NOT EXISTS idx_player_sessions_server ON player_sessions(server_id,id DESC);CREATE TABLE IF NOT EXISTS backups(id TEXT PRIMARY KEY,server_id TEXT NOT NULL,label TEXT NOT NULL,created_at TEXT NOT NULL,size_bytes INTEGER NOT NULL,path TEXT NOT NULL);CREATE INDEX IF NOT EXISTS idx_backups_server ON backups(server_id,created_at DESC);CREATE TABLE IF NOT EXISTS backup_schedules(id TEXT PRIMARY KEY,server_id TEXT NOT NULL UNIQUE,interval_minutes INTEGER NOT NULL,retention_count INTEGER NOT NULL,enabled INTEGER NOT NULL,next_run_at TEXT,last_run_at TEXT,last_error TEXT);CREATE INDEX IF NOT EXISTS idx_backup_schedules_due ON backup_schedules(enabled,next_run_at);")?;app.manage(AppState{db:Mutex::new(conn),processes:tokio::sync::Mutex::new(HashMap::new()),backup_root});app.manage(InstallerState::default());start_backup_scheduler(app.handle().clone());Ok(())}).invoke_handler(tauri::generate_handler![list_servers,register_server,start_server,stop_server,send_server_command,get_host_metrics,list_installable_versions,install_server,cancel_server_install,list_server_files,read_server_file,write_server_file,get_server_players,get_player_history,refresh_server_players,manage_player,detect_server_runtime,list_server_addons,search_modrinth_addons,install_modrinth_addon,remove_server_addon,create_server_backup,list_server_backups,restore_server_backup,delete_server_backup,list_backup_schedules,save_backup_schedule,delete_backup_schedule,list_java_runtimes,set_server_java]).run(tauri::generate_context!()).expect("error while running CraftPilot");}
+pub fn run(){tauri::Builder::default().plugin(tauri_plugin_dialog::init()).setup(|app|{let app_data=app.path().app_data_dir()?;fs::create_dir_all(&app_data)?;let backup_root=app_data.join("backups");fs::create_dir_all(&backup_root)?;let conn=Connection::open(app_data.join("craftpilot.db"))?;conn.execute_batch("PRAGMA journal_mode=WAL;CREATE TABLE IF NOT EXISTS servers(id TEXT PRIMARY KEY,name TEXT NOT NULL,directory TEXT NOT NULL,jar_file TEXT NOT NULL,java_path TEXT NOT NULL,min_memory_mb INTEGER NOT NULL,max_memory_mb INTEGER NOT NULL,created_at TEXT NOT NULL);CREATE TABLE IF NOT EXISTS online_players(server_id TEXT NOT NULL,player_name TEXT NOT NULL,joined_at TEXT NOT NULL,PRIMARY KEY(server_id,player_name));CREATE TABLE IF NOT EXISTS player_sessions(id INTEGER PRIMARY KEY AUTOINCREMENT,server_id TEXT NOT NULL,player_name TEXT NOT NULL,joined_at TEXT NOT NULL,left_at TEXT);CREATE INDEX IF NOT EXISTS idx_player_sessions_server ON player_sessions(server_id,id DESC);CREATE TABLE IF NOT EXISTS backups(id TEXT PRIMARY KEY,server_id TEXT NOT NULL,label TEXT NOT NULL,created_at TEXT NOT NULL,size_bytes INTEGER NOT NULL,path TEXT NOT NULL);CREATE INDEX IF NOT EXISTS idx_backups_server ON backups(server_id,created_at DESC);CREATE TABLE IF NOT EXISTS backup_schedules(id TEXT PRIMARY KEY,server_id TEXT NOT NULL UNIQUE,interval_minutes INTEGER NOT NULL,retention_count INTEGER NOT NULL,enabled INTEGER NOT NULL,next_run_at TEXT,last_run_at TEXT,last_error TEXT);CREATE INDEX IF NOT EXISTS idx_backup_schedules_due ON backup_schedules(enabled,next_run_at);")?;app.manage(AppState{db:Mutex::new(conn),processes:tokio::sync::Mutex::new(HashMap::new()),backup_root});app.manage(InstallerState::default());start_backup_scheduler(app.handle().clone());Ok(())}).invoke_handler(tauri::generate_handler![list_servers,register_server,start_server,stop_server,send_server_command,get_host_metrics,list_installable_versions,install_server,cancel_server_install,list_server_files,read_server_file,write_server_file,get_server_players,get_player_history,refresh_server_players,manage_player,detect_server_runtime,list_server_addons,search_modrinth_addons,install_modrinth_addon,remove_server_addon,create_server_backup,list_server_backups,restore_server_backup,delete_server_backup,list_backup_schedules,save_backup_schedule,delete_backup_schedule,list_java_runtimes,set_server_java,install_java_runtime,get_java_recommendation]).run(tauri::generate_context!()).expect("error while running CraftPilot");}
