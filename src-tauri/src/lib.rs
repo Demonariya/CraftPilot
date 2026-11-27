@@ -106,7 +106,6 @@ async fn stop_server(server_id:String,app:AppHandle,state:State<'_,AppState>)->R
  entry.child.kill().await.map_err(|e|format!("Failed to terminate server: {e}"))?;emit_line(&app,&server_id,"system","Graceful shutdown timed out; process was terminated.".into());Ok(())
 }
 
-#[tauri::command]
 #[derive(Serialize, Clone)]
 struct JavaRuntime { path:String, version:String, major:u32, vendor:String }
 fn inspect_java(path:&PathBuf)->Option<JavaRuntime>{
@@ -142,6 +141,7 @@ async fn set_server_java(server_id:String,java_path:String,state:State<'_,AppSta
  let processes=state.processes.lock().await;if processes.contains_key(&server_id){return Err("Stop this server before changing its Java runtime.".into());}drop(processes);
  let conn=db_conn(&state)?;let changed=conn.execute("UPDATE servers SET java_path=?1 WHERE id=?2",params![runtime.path,server_id]).map_err(|e|e.to_string())?;if changed==0{return Err("Server profile not found.".into());}Ok(())
 }
+#[tauri::command]
 fn get_host_metrics()->HostMetrics{let mut system=System::new_all();system.refresh_all();HostMetrics{cpu_usage:system.global_cpu_usage(),used_memory_mb:system.used_memory()/1024/1024,total_memory_mb:system.total_memory()/1024/1024}}
 
 
