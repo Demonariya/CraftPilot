@@ -4,18 +4,19 @@ A Windows-first Minecraft server manager built with Rust, Tauri 2, React and Typ
 
 ## Current milestone
 
+**1.5.0 — Mod & Plugin Manager Hardening**
+- Keep the existing Modrinth-powered plugin/mod discovery, compatibility filtering, inventory, install and removal workflow.
+- Verify Modrinth releases against the publisher-provided SHA-512 hash before installation.
+- Canonicalize the target add-on folder and reject folder symlinks that resolve outside the server root.
+- Stage downloads in unique create-new temporary files and atomically move them into place only after validation.
+- Keep add-on changes blocked while the server process is running.
+
 **1.4.0 — Server Automation**
 - Per-server auto-start when CraftPilot opens.
 - Background process supervision and unexpected-crash detection.
 - Configurable restart delay (5–300 seconds) and bounded retry attempts (1–10).
 - Restart attempts reset after 60 seconds of stable uptime; manual starts reset the counter.
 - Existing server databases are migrated automatically.
-
-**1.3.0 — Startup Profiles & Process Lifecycle**
-- Per-server custom JVM arguments with quoted-value parsing and validation.
-- Balanced, Performance, and Low Memory launch presets.
-- Configurable graceful shutdown timeout (5–120 seconds), followed by forced termination only when necessary.
-- Existing databases are migrated automatically without losing server profiles.
 
 **1.3.0 — Startup Profiles & Process Lifecycle**
 - Per-server custom JVM arguments with quoted-value parsing and validation.
@@ -140,7 +141,7 @@ npm run tauri dev
 npm run tauri build
 ```
 
-CraftPilot currently manages local Java server processes. Backups are local uncompressed folder snapshots; Windows-service scheduling (backups currently run while CraftPilot is open), Windows-service scheduling and Spigot BuildTools automation remain planned. Java runtime lifecycle controls are available for CraftPilot-managed installations only. Modrinth is the supported add-on source in this release. The Players screen currently provides live roster tracking and console-backed moderation; UUID enrichment is not yet available. The installer currently supports Paper, Purpur and Vanilla.
+CraftPilot currently manages local Java server processes. Backups are local uncompressed folder snapshots; Windows-service scheduling (backups currently run while CraftPilot is open) and Spigot BuildTools automation remain planned. Java runtime lifecycle controls are available for CraftPilot-managed installations only. Modrinth is the supported add-on source in this release. The Players screen currently provides live roster tracking and console-backed moderation; UUID enrichment is not yet available. The installer currently supports Paper, Purpur and Vanilla.
 
 ## License
 
