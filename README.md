@@ -4,6 +4,15 @@ A Windows-first Minecraft server manager built with Rust, Tauri 2, React and Typ
 
 ## Current milestone
 
+**0.4.0 — File Manager & Server Properties**
+
+- Browse server directories and files from inside the app
+- Read and edit UTF-8 text files up to 1 MB
+- Save changes directly to the selected server directory
+- Edit `server.properties` with a dedicated editor
+- Restrict filesystem operations to the canonical server root; symlink/path traversal escapes are rejected
+- Add the Windows application icon required by Tauri bundling
+
 **0.3.0 — Server Installer**
 
 - Install Paper, Purpur and Vanilla server software
