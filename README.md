@@ -4,6 +4,16 @@ A Windows-first Minecraft server manager built with Rust, Tauri 2, React and Typ
 
 ## Current milestone
 
+**0.8.0 — Backup Scheduler & Automation**
+
+- Configure recurring backups from every 15 minutes up to every 7 days
+- Keep a configurable number of the newest snapshots (1–100)
+- Persist schedules in SQLite and resume them when CraftPilot starts
+- Retry in five minutes when a server is running or a backup fails
+- Prune old snapshots only after a successful new backup
+- Show next run, last successful run and the most recent error
+- Scheduler runs locally while CraftPilot is open; it does not install a Windows service or run while the app is closed
+
 **0.7.0 — Backups & Restore**
 
 - Create full local snapshots of a managed server folder, including worlds, configuration and add-ons
@@ -78,7 +88,7 @@ npm run tauri dev
 npm run tauri build
 ```
 
-CraftPilot currently manages local Java server processes. Backups are local uncompressed folder snapshots; scheduled backups, Java runtime management and Spigot BuildTools automation remain planned. Modrinth is the supported add-on source in this release. The Players screen currently provides live roster tracking and console-backed moderation; UUID enrichment is not yet available. The installer currently supports Paper, Purpur and Vanilla.
+CraftPilot currently manages local Java server processes. Backups are local uncompressed folder snapshots; Windows-service scheduling (backups currently run while CraftPilot is open), Java runtime management and Spigot BuildTools automation remain planned. Modrinth is the supported add-on source in this release. The Players screen currently provides live roster tracking and console-backed moderation; UUID enrichment is not yet available. The installer currently supports Paper, Purpur and Vanilla.
 
 ## License
 
