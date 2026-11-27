@@ -144,7 +144,6 @@ async fn set_server_java(server_id:String,java_path:String,state:State<'_,AppSta
  let conn=db_conn(&state)?;let changed=conn.execute("UPDATE servers SET java_path=?1 WHERE id=?2",params![runtime.path,server_id]).map_err(|e|e.to_string())?;if changed==0{return Err("Server profile not found.".into());}Ok(())
 }
 #[tauri::command]
-#[tauri::command]
 async fn install_java_runtime(major:u32,app:AppHandle)->Result<JavaRuntime,String>{
  if ![8,17,21,25].contains(&major){return Err("Supported Java versions are 8, 17, 21 and 25.".into());}
  let data=app.path().app_data_dir().map_err(|e|e.to_string())?;let root=data.join("java");fs::create_dir_all(&root).map_err(|e|e.to_string())?;
