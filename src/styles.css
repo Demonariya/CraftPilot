@@ -41,3 +41,44 @@
 .history-indicator.left{background:#d49a77}
 @media(max-width:1050px){.players-layout{grid-template-columns:1fr}.player-history-panel{grid-column:auto}}
 @media(max-width:620px){.player-row{flex-wrap:wrap}.player-details{min-width:calc(100% - 60px)}.player-online{margin-left:45px}.history-row{grid-template-columns:8px 1fr auto}.history-row time{grid-column:2/-1;text-align:left}}
+
+
+/* Plugin & mod manager */
+.addons-layout{display:flex;flex-direction:column;gap:14px;min-width:0}
+.addons-runtime{padding:17px 18px}
+.runtime-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;align-items:center;gap:15px;margin-top:19px;padding-top:15px;border-top:1px solid #2b3335}
+.runtime-facts>div{display:flex;flex-direction:column;gap:6px;min-width:0}
+.runtime-facts small{font:8px 'DM Mono',monospace;color:#7d8988;letter-spacing:.7px}
+.runtime-facts b{font:11px 'DM Mono',monospace;color:#d8dfdc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.runtime-status,.modrinth-tag{font:8px 'DM Mono',monospace;letter-spacing:.5px;padding:6px 8px;border-radius:5px;white-space:nowrap}
+.runtime-status.supported{background:#263426;color:#a9df83;border:1px solid #3c543a}
+.runtime-status.unsupported{background:#352727;color:#dc9d92;border:1px solid #60403b}
+.addons-columns{display:grid;grid-template-columns:minmax(290px,.82fr) minmax(430px,1.18fr);gap:14px;align-items:start}
+.installed-addons,.discover-addons{min-width:0;min-height:390px}
+.addon-list,.addon-results{padding-top:12px}
+.addon-row,.project-row{display:flex;align-items:center;gap:11px;padding:11px 2px;border-bottom:1px solid #2a3234;min-width:0}
+.addon-row:last-child,.project-row:last-child{border-bottom:0}
+.addon-file-icon,.project-placeholder{width:34px;height:34px;flex:0 0 34px;border-radius:8px;background:#252f2a;color:#acd984;display:grid;place-items:center}
+.addon-info,.project-info{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
+.addon-info b,.project-info b{font-size:10px;color:#dce3df}
+.addon-info small,.project-info small{font-size:8px;color:#778487;line-height:1.5}
+.addon-row .text-button{font-size:9px}
+.modrinth-tag{color:#a8d987;background:#263328;border:1px solid #3b4d3c}
+.addon-search{height:39px;margin-top:15px;border:1px solid #333d3f;background:#111719;border-radius:7px;display:flex;align-items:center;gap:9px;padding:0 7px 0 11px;color:#82908e}
+.addon-search:focus-within{border-color:#7d9d6e}
+.addon-search input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:#e0e6e3;font-size:10px}
+.addon-search input::placeholder{color:#657174}
+.addon-search .button{height:27px;font-size:9px}
+.project-row{align-items:flex-start;padding:12px 2px}
+.project-row>img{width:35px;height:35px;flex:0 0 35px;border-radius:8px;object-fit:cover;background:#252c2e}
+.project-info p{font-size:9px;line-height:1.55;color:#9aa5a1;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.project-row>.button{height:29px;flex:0 0 auto;font-size:9px;margin-top:2px}
+.addons-empty{min-height:160px;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;color:#778487;font-size:10px;line-height:1.6}
+.addons-unsupported{min-height:240px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px;color:#82908d}
+.addons-unsupported b{font-size:12px;color:#d7dfdc}
+.addons-unsupported p{max-width:550px;font-size:10px;line-height:1.7;color:#7f8b8d;margin:0}
+.compat-note,.addons-footnote{font-size:9px;line-height:1.6;color:#7e8a89;margin:11px 0 0}
+.compat-note.warning{color:#d6b47c}
+.addons-footnote{padding:0 3px;margin:0}
+@media(max-width:1120px){.addons-columns{grid-template-columns:1fr}.runtime-facts{grid-template-columns:repeat(2,minmax(0,1fr))}.runtime-status{justify-self:start}}
+@media(max-width:700px){.runtime-facts{grid-template-columns:1fr 1fr}.project-row{flex-wrap:wrap}.project-info{min-width:calc(100% - 55px)}}

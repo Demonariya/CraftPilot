@@ -4,6 +4,15 @@ A Windows-first Minecraft server manager built with Rust, Tauri 2, React and Typ
 
 ## Current milestone
 
+**0.6.0 — Plugin & Mod Manager**
+
+- Detect Paper, Purpur, Spigot, Fabric, Forge, NeoForge and Quilt from server JAR/folder names
+- Detect Minecraft version from the latest server log when available
+- Inventory installed plugin/mod JARs from the correct server directory
+- Search Modrinth for loader-filtered projects and compatible game versions
+- Install the latest compatible Modrinth release with HTTPS/CDN and filename validation
+- Remove installed add-ons safely; installation/removal is blocked while the server is running
+
 **0.5.0 — Player Management & Moderation**
 
 - Track online players from standard Minecraft server log events and `/list` output
@@ -60,7 +69,7 @@ npm run tauri dev
 npm run tauri build
 ```
 
-CraftPilot currently manages local Java server processes. Spigot BuildTools automation, backups, plugin/mod management, Java runtime management and scheduling remain planned. The Players screen currently provides live roster tracking and console-backed moderation; UUID enrichment is not yet available. The installer currently supports Paper, Purpur and Vanilla.
+CraftPilot currently manages local Java server processes. Spigot BuildTools automation, backups, Java runtime management and scheduling remain planned. Modrinth is the supported add-on source in this release. The Players screen currently provides live roster tracking and console-backed moderation; UUID enrichment is not yet available. The installer currently supports Paper, Purpur and Vanilla.
 
 ## License
 
