@@ -153,3 +153,12 @@ MIT
 - Online player count and process uptime in a dedicated Monitoring page.
 - Rolling 60-sample CPU and memory history chart.
 - Explicitly distinguishes process resource usage from host-wide metrics; TPS and ping are not fabricated when unavailable.
+
+
+## 1.7.0 — Network & Remote Server Management
+- Saved SSH connection profiles for remote Linux/Unix hosts.
+- Key-only authentication through the system OpenSSH client; no password storage.
+- Host-key verification on first connection and strict batch mode.
+- Test connection and execute remote commands with bounded output and exit status.
+- Remote connection data is stored in the local CraftPilot SQLite database.
+- Remote Minecraft process lifecycle orchestration is not yet included; this release provides the secure SSH connection and command foundation.

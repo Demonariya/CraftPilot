@@ -4,3 +4,6 @@ export interface ServerOutput { server_id:string; stream:"stdout"|"stderr"|"syst
 export interface HostMetrics { cpu_usage:number; used_memory_mb:number; total_memory_mb:number; }
 
 export interface ServerMetrics { running:boolean; cpu_usage_percent:number; memory_mb:number; player_count:number; uptime_secs:number; }
+
+export interface RemoteHost { id:string; name:string; host:string; port:number; username:string; identity_file:string; created_at:string; }
+export interface RemoteCommandResult { stdout:string; stderr:string; exit_code:number; }
