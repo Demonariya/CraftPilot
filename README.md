@@ -4,6 +4,13 @@ A Windows-first Minecraft server manager built with Rust, Tauri 2, React and Typ
 
 ## Current milestone
 
+**1.2.0 — Server Profile Management**
+
+- Dedicated registered-server management screen
+- Edit server display name, Java executable, and minimum/maximum heap allocation
+- Validate profile values and prevent edits while the server process is running
+- Apply configuration changes on the next server start without moving or modifying server files
+
 **1.1.0 — Java Runtime Lifecycle Management**
 
 - Distinguish CraftPilot-managed Java runtimes from system installations
