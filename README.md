@@ -4,6 +4,15 @@ A Windows-first Minecraft server manager built with Rust, Tauri 2, React and Typ
 
 ## Current milestone
 
+**0.3.0 — Server Installer**
+
+- Install Paper, Purpur and Vanilla server software
+- Resolve versions from PaperMC, PurpurMC and Mojang metadata APIs
+- Stream server JAR downloads with progress updates and cancellation
+- Validate the configured Java executable before installation
+- Create a managed server profile and initialize `eula.txt` with `eula=false`
+- EULA acceptance remains a manual user action
+
 **0.2.0 — Server Engine & Live Console**
 
 - Register existing Java Minecraft server folders
@@ -34,7 +43,7 @@ npm run tauri dev
 npm run tauri build
 ```
 
-CraftPilot currently manages local Java server processes. Server software downloading, player management, backups, plugin/mod management and scheduling are planned for later milestones.
+CraftPilot currently manages local Java server processes. Spigot BuildTools automation, player management, backups, plugin/mod management and scheduling remain planned. The installer currently supports Paper, Purpur and Vanilla.
 
 ## License
 
