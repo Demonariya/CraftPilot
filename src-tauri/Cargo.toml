@@ -27,4 +27,3 @@ sha2 = "0.10"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 uuid = { version = "1", features = ["v4", "serde"] }
 shell-words = "1"
-shell-words = "1"
