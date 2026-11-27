@@ -111,3 +111,13 @@
 .profile-form>label>select{height:36px;border:1px solid #343c3e;border-radius:7px;background:#1b2022;color:#e5e9e9;padding:0 10px;outline:none}
 .profile-form>label>small{font-size:9px;line-height:1.6;color:#7f8c8e;letter-spacing:0;font-weight:400}
 @media(max-width:620px){.jvm-presets{display:grid;grid-template-columns:1fr 1fr}.launch-section-head{align-items:flex-start}}
+
+
+/* Server startup and crash recovery settings */
+.automation-profile-settings{gap:13px}
+.automation-profile-settings .automation-toggle{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-top:1px solid #2b3335}
+.automation-profile-settings .automation-toggle input{margin-top:3px;accent-color:#9ab780}
+.automation-profile-settings .automation-toggle span{display:grid;gap:4px}
+.automation-profile-settings .automation-toggle b{font-size:10px;color:#dce3e2}
+.automation-profile-settings .automation-toggle small{font-size:9px;color:#7f8c8e;line-height:1.5}
+.automation-profile-settings .profile-memory-grid select{width:100%;height:36px;border:1px solid #343c3e;border-radius:7px;background:#1b2022;color:#e5e9e9;padding:0 10px;outline:none}

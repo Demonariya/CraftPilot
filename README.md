@@ -4,6 +4,13 @@ A Windows-first Minecraft server manager built with Rust, Tauri 2, React and Typ
 
 ## Current milestone
 
+**1.4.0 — Server Automation**
+- Per-server auto-start when CraftPilot opens.
+- Background process supervision and unexpected-crash detection.
+- Configurable restart delay (5–300 seconds) and bounded retry attempts (1–10).
+- Restart attempts reset after 60 seconds of stable uptime; manual starts reset the counter.
+- Existing server databases are migrated automatically.
+
 **1.3.0 — Startup Profiles & Process Lifecycle**
 - Per-server custom JVM arguments with quoted-value parsing and validation.
 - Balanced, Performance, and Low Memory launch presets.
