@@ -4,6 +4,14 @@ A Windows-first Minecraft server manager built with Rust, Tauri 2, React and Typ
 
 ## Current milestone
 
+**0.5.0 — Player Management & Moderation**
+
+- Track online players from standard Minecraft server log events and `/list` output
+- Persist player join/leave sessions in SQLite across app restarts
+- Send Kick, Ban, Pardon, Whitelist add/remove, OP and De-OP commands from the Players screen
+- Refresh the online roster by querying the selected running server
+- Validate Minecraft player names and sanitize moderation reasons before sending commands
+
 **0.4.0 — File Manager & Server Properties**
 
 - Browse server directories and files from inside the app
@@ -52,7 +60,7 @@ npm run tauri dev
 npm run tauri build
 ```
 
-CraftPilot currently manages local Java server processes. Spigot BuildTools automation, player management, backups, plugin/mod management and scheduling remain planned. The installer currently supports Paper, Purpur and Vanilla.
+CraftPilot currently manages local Java server processes. Spigot BuildTools automation, backups, plugin/mod management, Java runtime management and scheduling remain planned. The Players screen currently provides live roster tracking and console-backed moderation; UUID enrichment is not yet available. The installer currently supports Paper, Purpur and Vanilla.
 
 ## License
 
